@@ -1,0 +1,26 @@
+[project]
+name = "servicenow-rag-agentcore"
+version = "0.1.0"
+description = "ServiceNow Incidents RAG with AWS AgentCore"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic-settings",
+    "sqlalchemy",
+    "psycopg2-binary",
+    "pgvector",
+    "boto3",
+    "langchain",
+    "langchain-aws",
+    "langchain-community",
+    "langchain-postgres",
+    "httpx",
+    "beautifulsoup4",
+    "lxml",
+    "jinja2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

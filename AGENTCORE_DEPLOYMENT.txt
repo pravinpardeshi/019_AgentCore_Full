@@ -1,0 +1,107 @@
+AWS AGENTCORE DEPLOYMENT GUIDE
+===============================
+
+Prerequisites:
+- AWS CLI configured
+- AWS credentials with permissions for AgentCore, ECR, Bedrock
+- Bedrock model access enabled for Nova Lite and Titan Embed v2
+- No Docker required (using source-based or AgentCore CLI options)
+
+Option 1: Using AgentCore CLI (Recommended if available)
+--------------------------------------------------------
+1. Install AgentCore CLI
+   npm install -g @aws/agentcore@preview
+
+2. Initialize in project directory
+   cd /home/pravin/opencode_projects/033_AgentCore_LangGraph
+   agentcore init
+
+3. Configure
+   agentcore configure
+   - Select region
+   - Configure execution role
+   - Set entry point (runtime.py or agentcore_app.py)
+
+4. Deploy
+   agentcore deploy
+
+5. Invoke
+   agentcore invoke --payload '{"question": "test"}'
+
+
+Option 2: Using AWS Console (Manual)
+-------------------------------------
+1. Go to AWS Bedrock > AgentCore > Runtimes
+2. Create runtime
+   - Name: servicenow-rag-agent
+   - Runtime type: Custom
+   - Protocol: HTTP
+   - Port: 8080
+   - Health check path: /ping
+   - Entry point: runtime.py (or agentcore_app.py)
+   
+3. Upload source code
+   - Zip the project directory (excluding .venv, __pycache__)
+   - Upload via console or S3
+
+4. Configure environment variables:
+   - AWS_REGION=us-east-1
+   - BEDROCK_MODEL_ID=bedrock/ca.amazon.nova-lite-v1:0
+   - EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0
+   - DATABASE_URL=arn:aws:secretsmanager:... (or direct connection)
+   - SERVICENOW_URL=https://dev389543.service-now.com/
+
+5. Set execution role with permissions for Bedrock, Secrets Manager, RDS
+
+
+Option 3: Using AWS CLI
+-----------------------
+1. Create ECR repository (if using container approach)
+   aws ecr create-repository --repository-name servicenow-rag-agent --region us-east-1
+
+2. Create AgentCore runtime
+   aws bedrock-agentcore-control create-agent-runtime \
+     --agent-runtime-name servicenow-rag-agent \
+     --agent-runtime-artifact '{"sourceCodeConfiguration":{"zipFile":{"s3Location":{"bucket":"your-bucket","key":"code.zip"}}}}' \
+     --role-arn arn:aws:iam::ACCOUNT:role/AgentCoreRole \
+     --network-configuration '{"networkMode":"PUBLIC"}' \
+     --protocol-configuration '{"serverProtocol":"HTTP"}' \
+     --region us-east-1
+
+3. Create endpoint
+   aws bedrock-agentcore-control create-agent-runtime-endpoint \
+     --agent-runtime-id <runtime-id> \
+     --name default
+
+Note: Source upload method varies by AgentCore version. Check current AWS docs.
+
+
+PREPARING CODE FOR UPLOAD
+-------------------------
+Create a zip excluding unnecessary files:
+
+zip -r servicenow-rag-agent.zip . \
+  -x "*.pyc" -x "*__pycache__*" -x ".venv/*" -x ".git/*" \
+  -x "*.log" -x ".env" -x "test_*.py"
+
+Upload this zip to S3 or directly via console.
+
+ENTRY POINTS AVAILABLE
+----------------------
+- runtime.py - Main runtime entry point
+- agentcore_app.py - Alternative entry point
+- src/runtime_entrypoint.py - Additional entry point
+- src/main.py - FastAPI app (also has /ping and /invocations)
+
+AgentCore will look for entry point based on configuration.
+Use runtime.py as it's clean and follows the pattern.
+
+
+TESTING AFTER DEPLOYMENT
+------------------------
+curl -X POST https://<runtime-endpoint>/invocations \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What are common network issues?"}'
+
+Health check:
+curl https://<runtime-endpoint>/ping
