@@ -632,3 +632,73 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ===== Colorful, larger icons ===== */
+.brand-logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 0.625rem;
+    box-shadow: 0 4px 12px -2px rgba(96, 165, 250, 0.45);
+}
+
+.brand-logo svg { width: 26px; height: 26px; }
+
+.sidenav-collapse-btn svg,
+.sidenav-expand-btn svg { width: 22px; height: 22px; }
+
+.sidenav-collapse-btn:hover svg,
+.sidenav-expand-btn:hover svg { color: var(--accent); }
+
+.sidenav-item svg {
+    width: 23px;
+    height: 23px;
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.sidenav-item:hover svg { transform: scale(1.12); }
+
+.sidenav-item[data-view="dashboard"] svg { color: #3b82f6; }
+.sidenav-item[data-view="dashboard"]:hover svg,
+.sidenav-item[data-view="dashboard"].active svg {
+    color: #60a5fa;
+    filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.75));
+}
+
+.sidenav-item[data-view="chat"] svg { color: #10b981; }
+.sidenav-item[data-view="chat"]:hover svg,
+.sidenav-item[data-view="chat"].active svg {
+    color: #34d399;
+    filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.75));
+}
+
+.sidenav-item[data-view="monitoring"] svg { color: #f59e0b; }
+.sidenav-item[data-view="monitoring"]:hover svg,
+.sidenav-item[data-view="monitoring"].active svg {
+    color: #fbbf24;
+    filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.75));
+}
+
+.theme-btn svg { width: 21px; height: 21px; }
+.theme-icon.sun { color: #fbbf24; filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.6)); }
+.theme-icon.moon { color: #a78bfa; filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.6)); }
+
+.refresh-btn svg { width: 19px; height: 19px; color: #38bdf8; }
+.refresh-btn:hover svg { color: #7dd3fc; }
+
+.topbar-chat-link svg { width: 18px; height: 18px; }
+
+/* Dashboard metric icons */
+.metric-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.metric-ico {
+    width: 21px;
+    height: 21px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 5px currentColor);
+}
+
+.suggestion-title { color: var(--text-primary); }
