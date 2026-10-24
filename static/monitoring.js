@@ -79,7 +79,7 @@ window.onThemeChange = function (theme, colors) {
 async function timedFetch(url) {
     const start = performance.now();
     try {
-        const res = await fetch(url);
+        const res = await fetch((window.API_BASE || '') + url);
         const ms = Math.round(performance.now() - start);
         return { ok: res.ok, ms, data: res.ok ? await res.json() : null };
     } catch (e) {

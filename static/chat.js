@@ -5,21 +5,7 @@ const messagesContainer = document.getElementById('messagesContainer');
 const messagesList = document.getElementById('messagesList');
 const welcomeScreen = document.getElementById('welcomeScreen');
 
-userInput.addEventListener('input', function () {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-    sendBtn.disabled = this.value.trim() === '';
-});
-
-userInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (this.value.trim()) chatForm.dispatchEvent(new Event('submit'));
-    }
-});
-
-chatForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+async function handleSend() {
     const question = userInput.value.trim();
     if (!question) return;
 
@@ -34,7 +20,7 @@ chatForm.addEventListener('submit', async (e) => {
     const typingId = addTypingIndicator();
 
     try {
-        const response = await fetch('/api/query', {
+        const response = await fetch((window.API_BASE || '') + '/api/query', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question })
@@ -49,12 +35,27 @@ chatForm.addEventListener('submit', async (e) => {
         addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
         console.error('Error:', error);
     }
+}
+
+userInput.addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+    sendBtn.disabled = this.value.trim() === '';
 });
+
+userInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (this.value.trim()) handleSend();
+    }
+});
+
+sendBtn.addEventListener('click', handleSend);
 
 function useSuggestion(text) {
     userInput.value = text;
     sendBtn.disabled = false;
-    chatForm.dispatchEvent(new Event('submit'));
+    handleSend();
 }
 
 function newChat() {

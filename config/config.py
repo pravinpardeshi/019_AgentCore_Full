@@ -4,11 +4,14 @@ import os
 
 class Settings(BaseSettings):
     aws_region: str = os.getenv("AWS_REGION", "us-east-1")
-    bedrock_model_id: str = os.getenv("BEDROCK_MODEL_ID", "bedrock/ca.amazon.nova-lite-v1:0")
+    bedrock_model_id: str = os.getenv("BEDROCK_MODEL_ID", "bedrock/us.amazon.nova-lite-v1:0")
     embedding_model_id: str = os.getenv("EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v2:0")
     database_url: str = os.getenv("DATABASE_URL", "")
     servicenow_url: str = os.getenv("SERVICENOW_URL", "https://dev389543.service-now.com/")
     agentcore_runtime_arn: str = os.getenv("AGENTCORE_RUNTIME_ARN", "")
+    agentcore_endpoint_url: str = os.getenv("AGENTCORE_ENDPOINT_URL", "")
+    use_agentcore: bool = os.getenv("USE_AGENTCORE", "false").lower() == "true"
+    ui_api_base: str = os.getenv("UI_API_BASE", "")
     serper_api_key: str = os.getenv("SERPER_API_KEY", "")
     servicenow_user: str = os.getenv("SERVICENOW_USER", "")
     servicenow_password: str = os.getenv("SERVICENOW_PASSWORD", "")

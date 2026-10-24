@@ -3,105 +3,206 @@ AWS AGENTCORE DEPLOYMENT GUIDE
 
 Prerequisites:
 - AWS CLI configured
-- AWS credentials with permissions for AgentCore, ECR, Bedrock
-- Bedrock model access enabled for Nova Lite and Titan Embed v2
-- No Docker required (using source-based or AgentCore CLI options)
-
-Option 1: Using AgentCore CLI (Recommended if available)
---------------------------------------------------------
-1. Install AgentCore CLI
-   npm install -g @aws/agentcore@preview
-
-2. Initialize in project directory
-   cd /home/pravin/opencode_projects/033_AgentCore_LangGraph
-   agentcore init
-
-3. Configure
-   agentcore configure
-   - Select region
-   - Configure execution role
-   - Set entry point (runtime.py or agentcore_app.py)
-
-4. Deploy
-   agentcore deploy
-
-5. Invoke
-   agentcore invoke --payload '{"question": "test"}'
+- AWS credentials with permissions for AgentCore, S3, Bedrock, Secrets Manager
+- Bedrock model access enabled for Nova Lite (us.amazon.nova-lite-v1:0) and
+  Titan Embed v2 (amazon.titan-embed-text-v2:0)  -- verified ACTIVE in us-east-1
+- No Docker required (S3 direct code deployment builds the runtime on AWS)
 
 
-Option 2: Using AWS Console (Manual)
--------------------------------------
-1. Go to AWS Bedrock > AgentCore > Runtimes
-2. Create runtime
-   - Name: servicenow-rag-agent
-   - Runtime type: Custom
-   - Protocol: HTTP
-   - Port: 8080
-   - Health check path: /ping
-   - Entry point: runtime.py (or agentcore_app.py)
-   
-3. Upload source code
-   - Zip the project directory (excluding .venv, __pycache__)
-   - Upload via console or S3
+OPTION 1: CONSOLE + S3 SOURCE (RECOMMENDED, NO DOCKER)
+-------------------------------------------------------
+The "Create runtime" -> Source type screen offers exactly two choices:
+  - S3            = direct code deployment (your path; AWS builds the runtime)
+  - ECR Container = container image (requires Docker locally; not needed here)
+There is no separate "Custom" option -- S3 IS the custom-code option.
 
-4. Configure environment variables:
-   - AWS_REGION=us-east-1
-   - BEDROCK_MODEL_ID=bedrock/ca.amazon.nova-lite-v1:0
-   - EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0
-   - DATABASE_URL=arn:aws:secretsmanager:... (or direct connection)
-   - SERVICENOW_URL=https://dev389543.service-now.com/
+1. Build the deployment zip (downloads linux/arm64 cp312 wheels + bundles code):
+     ./build_deploy_package.sh
+   Output: dist/agentcore_deployment.zip  (~64 MB)
+   IMPORTANT: AgentCore runtimes are ARM64. Do NOT zip your local site-packages
+   (x86_64 will not start). The build script handles the architecture.
 
-5. Set execution role with permissions for Bedrock, Secrets Manager, RDS
+2. Upload the zip to S3 (any bucket you own):
+     aws s3 cp dist/agentcore_deployment.zip s3://<your-bucket>/agentcore/agentcore_deployment.zip --region us-east-1
+
+3. AWS Console -> Amazon Bedrock -> AgentCore -> Runtimes -> Create runtime
+   Fill in:
+     - Runtime name:            servicenow-rag-agent
+     - Source type:             S3
+       - S3 bucket / object:    <your-bucket> / agentcore/agentcore_deployment.zip
+       - Runtime:               Python 3.12
+       - Entry point:           python   main.py
+     - Protocol:                HTTP   (contract: GET /ping, POST /invocations, port 8080)
+     - Port:                    8080
+     - Health check path:       /ping
+     - Execution role:          <role with Bedrock, Secrets Manager, RDS/S3 access>
+
+4. Environment variables (non-secret config ONLY -- secrets go to Secrets Manager,
+   the runtime configuration is readable via get-agent-runtime):
+     - AWS_REGION=us-east-1
+     - BEDROCK_MODEL_ID=bedrock/us.amazon.nova-lite-v1:0
+       (ca.amazon.nova-lite-v1:0 does NOT exist -> "model identifier is invalid")
+     - EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0
+     - DATABASE_URL=arn:aws:secretsmanager:us-east-1:...:secret:<name>   <-- code
+       resolves Secrets Manager ARNs directly (see AWS_SECRETS_MANAGER_SETUP.txt)
+     - SERVICENOW_URL=https://dev389543.service-now.com/
+     - USE_AGENTCORE=false       (the DEPLOYED runtime runs its own local RAG;
+       proxy mode is only for a separate local UI host -- see DATA FLOW section)
+   ServiceNow credentials: put them in Secrets Manager for production; for a
+   quick dev test they can be passed as SERVICENOW_USER / SERVICENOW_PASSWORD
+   (note: readable via get-agent-runtime).
+
+5. Create the endpoint (Runtimes -> your runtime -> Create endpoint) and wait
+   for endpoint status READY -- the runtime is not invocable until then.
 
 
-Option 3: Using AWS CLI
+OPTION 2: AGENTCORE CLI
 -----------------------
-1. Create ECR repository (if using container approach)
-   aws ecr create-repository --repository-name servicenow-rag-agent --region us-east-1
-
-2. Create AgentCore runtime
-   aws bedrock-agentcore-control create-agent-runtime \
-     --agent-runtime-name servicenow-rag-agent \
-     --agent-runtime-artifact '{"sourceCodeConfiguration":{"zipFile":{"s3Location":{"bucket":"your-bucket","key":"code.zip"}}}}' \
-     --role-arn arn:aws:iam::ACCOUNT:role/AgentCoreRole \
-     --network-configuration '{"networkMode":"PUBLIC"}' \
-     --protocol-configuration '{"serverProtocol":"HTTP"}' \
-     --region us-east-1
-
-3. Create endpoint
-   aws bedrock-agentcore-control create-agent-runtime-endpoint \
-     --agent-runtime-id <runtime-id> \
-     --name default
-
-Note: Source upload method varies by AgentCore version. Check current AWS docs.
+1. npm install -g @aws/agentcore@preview
+2. cd /home/pravin/opencode_projects/033_AgentCore_LangGraph
+3. agentcore init
+4. agentcore configure   (region, execution role, entry point: python main.py)
+5. agentcore deploy
+6. agentcore invoke --payload '{"question": "test"}'
 
 
-PREPARING CODE FOR UPLOAD
--------------------------
-Create a zip excluding unnecessary files:
+OPTION 3: AWS CLI (S3 direct code deployment)
+---------------------------------------------
+aws bedrock-agentcore-control create-agent-runtime \
+  --agent-runtime-name servicenow-rag-agent \
+  --agent-runtime-artifact '{
+    "codeConfiguration": {
+      "code": {"s3": {"bucket": "<your-bucket>", "prefix": "agentcore/"}},
+      "runtime": "PYTHON_3_12",
+      "entryPoint": ["python", "main.py"]
+    }
+  }' \
+  --role-arn arn:aws:iam::ACCOUNT:role/AgentCoreRole \
+  --network-configuration '{"networkMode":"PUBLIC"}' \
+  --protocol-configuration '{"serverProtocol":"HTTP"}' \
+  --region us-east-1
 
-zip -r servicenow-rag-agent.zip . \
-  -x "*.pyc" -x "*__pycache__*" -x ".venv/*" -x ".git/*" \
-  -x "*.log" -x ".env" -x "test_*.py"
+aws bedrock-agentcore-control create-agent-runtime-endpoint \
+  --agent-runtime-id <runtime-id> \
+  --name default
 
-Upload this zip to S3 or directly via console.
+
+BUILDING THE ZIP
+----------------
+  ./build_deploy_package.sh
+What it does:
+  - pip download --only-binary --platform ...aarch64 --python-version 3.12
+    (AgentCore is ARM64; x86_64 wheels will not start)
+  - unpacks wheels at the zip root (on sys.path automatically)
+  - adds main.py launcher, src/, config/, templates/, static/, requirements.txt
+  - excludes .env, tests, __pycache__, docs
+Zip is created at dist/agentcore_deployment.zip. Rebuild after code changes.
+
+requirements.txt notes:
+  - pinned to the versions this app is actually verified against
+    (fastapi 0.114.2 / starlette 0.38.6 / langgraph 1.2.15 / langchain-aws 1.9.0)
+  - bedrock-agentcore SDK is intentionally NOT in the deploy set: it requires
+    starlette>=0.46.2 (conflicts with fastapi 0.114.2) and is only needed by
+    runtime.py / agentcore_app.py entry points, which the S3 HTTP deploy does
+    not use (the FastAPI app serves /ping and /invocations itself).
+
+
+TUTORIAL: TESTING LOCALLY (OFFICE LAPTOP)
+---------------------------------------------
+Since you may not have a local PostgreSQL/pgvector DB, you can verify the
+AgentCore contract without a DB:
+
+1. Start the app:
+     python main.py
+   (app will boot on port 8080; it will log "DB connection setup failed"
+    but will still start)
+
+2. Verify the a-priori contract (AgentCore Gateway expectations):
+     curl http://localhost:8080/ping
+     -> Expect: {"status": "Healthy"}
+
+     curl -X POST http://localhost:8080/invocations -d '{"question": "hi"}'
+     -> Expect: {"error": "Database connection not established..."}
+     (This confirms the app is alive and routing requests, but correctly
+      reporting the missing DB instead of crashing with NoneType error)
+
+3. Proxy Test:
+     Set USE_AGENTCORE=true and AGENTCORE_ENDPOINT_URL=<your-endpoint>
+     Start the app, then use the UI. The local app will now proxy requests
+     to AWS, and the dashboard will show real metrics.
 
 ENTRY POINTS AVAILABLE
 ----------------------
-- runtime.py - Main runtime entry point
-- agentcore_app.py - Alternative entry point
-- src/runtime_entrypoint.py - Additional entry point
-- src/main.py - FastAPI app (also has /ping and /invocations)
+...
+- python main.py          <- USE THIS for the S3 direct deploy (root launcher,
+                             runs uvicorn on 0.0.0.0:8080 serving src.main:app;
+                             implements GET /ping + POST /invocations + /health)
+- runtime.py              <- BedrockAgentCoreApp SDK style; needs
+                             `pip install bedrock-agentcore` (see requirements note)
+- agentcore_app.py        <- same SDK style, alternative
+- src/runtime_entrypoint.py <- additional SDK entry
 
-AgentCore will look for entry point based on configuration.
-Use runtime.py as it's clean and follows the pattern.
+
+DATA FLOW & WIRING (dashboard / monitoring / chat)
+--------------------------------------------------
+Three entry points all record into the metrics store (src/api/metrics.py):
+- POST /api/query        - chat UI (SPA) - local RAG path
+- POST /agent/query      - LangGraph agent path
+- POST /invocations      - AgentCore production path
+Each records status, query, latency and REAL token counts taken from Bedrock
+usage metadata (input_tokens / output_tokens), falling back to a char/4
+estimate only if metadata is missing.
+
+Frontend fetches (all same-origin relative URLs by default):
+- chat        -> /api/query
+- dashboard   -> /api/monitor/metrics, /api/monitor/invocations?limit=8
+- monitoring  -> /health, /ping, /api/monitor/metrics, /api/monitor/invocations
+
+TOPOLOGY A - single process (local dev or fully deployed app):
+  Browser <---- same origin ----> FastAPI (UI + API + metrics). Nothing to
+  configure; metrics live in the FastAPI process memory.
+
+TOPOLOGY B - split: UI host locally, backend on AgentCore:
+  The AgentCore gateway ONLY routes POST /invocations and GET /ping; every
+  other path (/, /static/*, /api/monitor/*) returns 404 and the browser
+  cannot reach them directly (no CORS). So the local FastAPI acts as a
+  server-side proxy (src/api/agentcore_proxy.py):
+
+    Browser -> local FastAPI -> {AGENTCORE_ENDPOINT_URL}/invocations
+              -> local FastAPI -> {AGENTCORE_ENDPOINT_URL}/ping   (health)
+
+  Enable with BOTH in .env:
+    USE_AGENTCORE=true
+    AGENTCORE_ENDPOINT_URL=https://<runtime-endpoint-url>
+  Chat is forwarded to AgentCore and recorded in the LOCAL metrics store,
+  so dashboard/monitoring show real data for every UI-driven request.
+  (Requests that curl the AgentCore endpoint directly bypass the proxy and
+  are not counted - use CloudWatch/OTEL for fleet-wide observability.)
+
+  UI_API_BASE (optional, default empty): only for advanced setups where the
+  browser calls the backend directly on a different origin. Requires CORS on
+  that origin and does NOT expose /api/monitor/* through the AgentCore
+  gateway - leave empty unless you know you need it.
+
+NOTES
+- Metrics are in-memory: they reset on process restart and are per-instance
+  (a multi-replica deployment keeps separate counts).
+- Model ID must be a valid inference profile: ca.amazon.nova-lite-v1:0 does
+  NOT exist ("The provided model identifier is invalid"). Verified working
+  in us-east-1: us.amazon.nova-lite-v1:0 (US Nova Lite, ACTIVE) and
+  amazon.titan-embed-text-v2:0 for embeddings (512-dim).
 
 
 TESTING AFTER DEPLOYMENT
 ------------------------
-curl -X POST https://<runtime-endpoint>/invocations \
+curl -X POST https://<gateway>/<targetName>/invocations \
   -H "Content-Type: application/json" \
-  -d '{"question": "What are common network issues?"}'
+  -d '{"inputText": "What are common network issues?"}'
 
 Health check:
-curl https://<runtime-endpoint>/ping
+curl https://<gateway>/<targetName>/ping
+
+Note: the gateway URL format is
+https://{gatewayId}.gateway.bedrock-agentcore.{region}.amazonaws.com/{targetName}/invocations
+Only /invocations and /ping are routed by the gateway; the web UI is not
+served through it (host the full app separately, or use proxy mode above).

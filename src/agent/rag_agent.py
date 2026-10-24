@@ -5,7 +5,7 @@ from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, END, START
 from sqlalchemy.orm import Session
-from src.services.rag import rag_service
+from src.services.rag import rag_service, extract_usage, merge_usage
 from src.tools.registry import registry
 from config.config import settings
 
@@ -21,6 +21,7 @@ class AgentState(TypedDict):
     _tool_name: str
     _tool_args: dict
     tool_result: str
+    usage: dict
 
 
 class ServiceNowRAGAgent:
@@ -31,8 +32,13 @@ class ServiceNowRAGAgent:
     """
 
     def __init__(self):
+        # Ensure model_id is cleaned of 'bedrock/' prefix and whitespace
+        model_id = settings.bedrock_model_id.strip()
+        if model_id.startswith('bedrock/'):
+            model_id = model_id.replace('bedrock/', '', 1)
+
         self.llm = ChatBedrock(
-            model_id=settings.bedrock_model_id.replace('bedrock/', ''),
+            model_id=model_id,
             region_name=settings.aws_region,
             model_kwargs={"temperature": 0.7, "max_tokens": 1024}
         )
@@ -63,10 +69,11 @@ SKIP   (if the internal incident context alone is enough)"""
             "question": state["query"],
         })
         decision = (response.content or "").strip().splitlines()[0].strip() if response.content else "SKIP"
+        usage = merge_usage(state.get("usage", {}), extract_usage(response))
 
         if decision.upper().startswith("SEARCH:"):
             search_query = decision.split(":", 1)[1].strip() or state["query"]
-            return {"web_context": "", "messages": [AIMessage(content=decision)],
+            return {"web_context": "", "messages": [AIMessage(content=decision)], "usage": usage,
                     "_search_query": search_query, "_tool_name": "", "_tool_args": {}}
         if decision.upper().startswith("TOOL:"):
             try:
@@ -77,11 +84,12 @@ SKIP   (if the internal incident context alone is enough)"""
                     if "=" in pair:
                         k, v = pair.split("=", 1)
                         args[k.strip()] = v.strip()
-                return {"web_context": "", "messages": [AIMessage(content=decision)],
+                return {"web_context": "", "messages": [AIMessage(content=decision)], "usage": usage,
                         "_search_query": "", "_tool_name": name.strip(), "_tool_args": args}
             except Exception:
                 pass
-        return {"web_context": "", "messages": [], "_search_query": "", "_tool_name": "", "_tool_args": {}}
+        return {"web_context": "", "messages": [], "usage": usage,
+                "_search_query": "", "_tool_name": "", "_tool_args": {}}
 
     def _tool_call(self, state: AgentState) -> dict:
         name = state.get("_tool_name", "")
@@ -147,7 +155,8 @@ If web results are used, mention that as external reference."""
             "web_context": state.get("web_context", ""),
             "question": state["query"],
         })
-        return {"answer": response.content, "messages": [AIMessage(content=response.content)]}
+        return {"answer": response.content, "messages": [AIMessage(content=response.content)],
+                "usage": merge_usage(state.get("usage", {}), extract_usage(response))}
 
     def _route_after_decide(self, state: AgentState) -> str:
         if state.get("_tool_name"):
@@ -188,9 +197,11 @@ If web results are used, mention that as external reference."""
             "_tool_name": "",
             "_tool_args": {},
             "tool_result": "",
+            "usage": {},
         }
         result = self.graph.invoke(initial_state, {"configurable": {"db": db}})
-        return {"answer": result["answer"], "sources": result.get("sources", [])}
+        return {"answer": result["answer"], "sources": result.get("sources", []),
+                "usage": result.get("usage", {"input_tokens": 0, "output_tokens": 0})}
 
 
 rag_agent = ServiceNowRAGAgent()

@@ -1,108 +1,86 @@
-#!/usr/bin/env python3
-import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import httpx
-from bs4 import BeautifulSoup
-from sqlalchemy.orm import Session
-from src.db.connection import SessionLocal
+import sys
+import time
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from src.db.connection import Base
 from src.models.incident import Incident
 from src.services.embeddings import embedding_service
-from datetime import datetime
+from src.tools.servicenow_api import ServiceNowTool
+from config.config import settings
 
-def fetch_servicenow_incidents():
-    """
-    Fetch incidents from ServiceNow
-    Note: This may require authentication depending on instance settings
-    """
-    url = "https://dev389543.service-now.com/api/now/table/incident"
-    headers = {
-        "Accept": "application/json"
-    }
-    
-    try:
-        response = httpx.get(url, headers=headers, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get('result', [])
-        else:
-            print(f"Error: {response.status_code}")
-            # Try scraping the UI if API is not accessible
-            return scrape_servicenow_ui()
-    except Exception as e:
-        print(f"Error fetching from API: {e}")
-        return scrape_servicenow_ui()
+def ingest_servicenow_incidents(limit: int = 100):
+    # 1. Setup DB connection
+    db_url = settings.database_url
+    if not db_url:
+        print("❌ Error: DATABASE_URL not configured in .env")
+        return
 
-def scrape_servicenow_ui():
     try:
-        url = "https://dev389543.service-now.com/incident_list.do"
-        response = httpx.get(url, timeout=30)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # This is a basic scraper - may need adjustment based on actual page structure
-        print("Scraping UI - may need authentication")
-        return []
-    except Exception as e:
-        print(f"Error scraping: {e}")
-        return []
+        engine = create_engine(db_url)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        print(f"✅ Connected to RDS database.")
 
-def ingest_incidents(incidents_data):
-    db = SessionLocal()
-    try:
-        for item in incidents_data:
-            incident_number = item.get('number') or item.get('incident_number')
-            if not incident_number:
-                continue
-            
-            # Check if exists
-            existing = db.query(Incident).filter(Incident.incident_number == incident_number).first()
-            if existing:
-                continue
-            
-            short_desc = item.get('short_description', '')
-            description = item.get('description', '')
-            resolution = item.get('close_notes') or item.get('resolution_notes', '')
-            
-            # Create text for embedding
-            embed_text = f"{short_desc} {description} {resolution}"
+        # 2. Fetch raw data from ServiceNow
+        print(f"==> Fetching up to {limit} incidents from ServiceNow...")
+        sn = ServiceNowTool()
+        # We use _get directly to get raw JSON result instead of the formatted string
+        params = {
+            "sysparm_query": "active=true^ORDERBYDESCsys_created_on",
+            "sysparm_limit": limit,
+            "sysparm_fields": "number,short_description,description,state,priority,category,assigned_to,opened_at,closed_at,resolution_notes",
+        }
+        data = sn._get("/api/now/table/incident", params)
+        records = data.get("result", [])
+        
+        if not records:
+            print("⚠️ No incidents found in ServiceNow.")
+            return
+
+        print(f"Found {len(records)} records. Generating embeddings and inserting...")
+
+        # 3. Process and Insert
+        count = 0
+        for rec in records:
+            num = rec.get("number")
+            # Combine fields for a rich embedding
+            text_to_embed = f"Incident {num}: {rec.get('short_description', '')}\nDetails: {rec.get('description', '')}"
             
             try:
-                embedding = embedding_service.get_embedding(embed_text)
+                # Generate 1024-dim vector
+                vector = embedding_service.get_embedding(text_to_embed)
+                
+                # Create DB model
+                incident = Incident(
+                    incident_number=num,
+                    short_description=rec.get("short_description"),
+                    description=rec.get("description"),
+                    category=rec.get("category"),
+                    priority=rec.get("priority"),
+                    state=rec.get("state"),
+                    assigned_to=rec.get("assigned_to"),
+                    opened_at=rec.get("opened_at"),
+                    closed_at=rec.get("closed_at"),
+                    resolution_notes=rec.get("resolution_notes"),
+                    embedding=vector
+                )
+                session.add(incident)
+                count += 1
+                if count % 10 == 0:
+                    print(f"Processed {count}/{len(records)}...")
             except Exception as e:
-                print(f"Error getting embedding for {incident_number}: {e}")
-                continue
-            
-            incident = Incident(
-                incident_number=incident_number,
-                short_description=short_desc,
-                description=description,
-                category=item.get('category', ''),
-                priority=item.get('priority', ''),
-                state=item.get('state', ''),
-                assigned_to=item.get('assigned_to', ''),
-                resolution_notes=resolution,
-                incident_metadata=item,
-                embedding=embedding
-            )
-            db.add(incident)
-            print(f"Ingested {incident_number}")
-        
-        db.commit()
-        print("Ingestion complete!")
-    except Exception as e:
-        print(f"Error: {e}")
-        db.rollback()
-    finally:
-        db.close()
+                print(f"Skipping incident {num} due to error: {e}")
 
-def main():
-    print("Fetching incidents from ServiceNow...")
-    incidents = fetch_servicenow_incidents()
-    if incidents:
-        print(f"Found {len(incidents)} incidents")
-        ingest_incidents(incidents)
-    else:
-        print("No incidents found. You may need to authenticate to the ServiceNow instance.")
+        session.commit()
+        print(f"✅ Successfully ingested {count} incidents into RDS!")
+
+    except Exception as e:
+        print(f"❌ Ingestion failed: {e}")
+    finally:
+        if 'session' in locals():
+            session.close()
 
 if __name__ == "__main__":
-    main()
+    # You can change the limit here to fetch more data
+    ingest_servicenow_incidents(limit=50)

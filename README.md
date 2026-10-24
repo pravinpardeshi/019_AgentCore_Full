@@ -9,7 +9,7 @@ An agentic RAG application built with **LangGraph** + **FastAPI**, deployed to *
 | UI | HTML/CSS/JS (Inter font), dark/light theme, collapsible sidenav — served locally |
 | Backend | FastAPI, AgentCore-compatible endpoints (`/ping`, `/invocations`) |
 | Agent | LangGraph multi-node agent (`decide → web_search \| tool_call → retrieve → generate`) |
-| LLM | AWS Bedrock — `bedrock/ca.amazon.nova-lite-v1:0` (Nova Lite) |
+| LLM | AWS Bedrock — `bedrock/us.amazon.nova-lite-v1:0` (Nova Lite) |
 | Embeddings | AWS Bedrock — `amazon.titan-embed-text-v2:0` (1024 dims) |
 | Vector DB | PostgreSQL + pgvector on AWS RDS |
 | Tools | Google Serper search, ServiceNow Table API (registry-based, reusable) |
@@ -83,7 +83,7 @@ cp .env.example .env   # then fill in values
 | Variable | Purpose |
 |----------|---------|
 | `AWS_REGION` | AWS region for Bedrock |
-| `BEDROCK_MODEL_ID` | default `bedrock/ca.amazon.nova-lite-v1:0` |
+| `BEDROCK_MODEL_ID` | default `bedrock/us.amazon.nova-lite-v1:0` |
 | `EMBEDDING_MODEL_ID` | default `amazon.titan-embed-text-v2:0` |
 | `DATABASE_URL` | direct `postgresql://…` **or** Secrets Manager ARN (see below) |
 | `SERVICENOW_URL` | `https://dev389543.service-now.com/` |

@@ -165,8 +165,8 @@ async function refreshDashboard() {
 
     try {
         const [metricsRes, invRes] = await Promise.all([
-            fetch('/api/monitor/metrics'),
-            fetch('/api/monitor/invocations?limit=8')
+            fetch((window.API_BASE || '') + '/api/monitor/metrics'),
+            fetch((window.API_BASE || '') + '/api/monitor/invocations?limit=8')
         ]);
 
         if (!metricsRes.ok) throw new Error('metrics fetch failed');
