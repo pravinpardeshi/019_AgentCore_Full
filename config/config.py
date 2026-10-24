@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     database_url: str = os.getenv("DATABASE_URL", "")
     servicenow_url: str = os.getenv("SERVICENOW_URL", "https://dev389543.service-now.com/")
     agentcore_runtime_arn: str = os.getenv("AGENTCORE_RUNTIME_ARN", "")
+    serper_api_key: str = os.getenv("SERPER_API_KEY", "")
+    servicenow_user: str = os.getenv("SERVICENOW_USER", "")
+    servicenow_password: str = os.getenv("SERVICENOW_PASSWORD", "")
+    servicenow_token: str = os.getenv("SERVICENOW_TOKEN", "")
     
     class Config:
         env_file = ".env"
