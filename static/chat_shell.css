@@ -21,7 +21,7 @@ body {
     border: none;
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
@@ -77,14 +77,14 @@ body {
 .welcome-icon svg { width: 44px; height: 44px; }
 
 .welcome-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 0.5rem;
 }
 
 .welcome-subtitle {
-    font-size: 0.9375rem;
+    font-size: 1.0625rem;
     color: var(--text-secondary);
     margin-bottom: 2rem;
 }
@@ -116,13 +116,13 @@ body {
 
 .suggestion-title {
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 1rem;
     margin-bottom: 0.25rem;
     color: var(--text-primary);
 }
 
 .suggestion-desc {
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
     color: var(--text-secondary);
 }
 
@@ -175,7 +175,7 @@ body {
 .message-text {
     flex: 1;
     line-height: 1.75;
-    font-size: 0.9375rem;
+    font-size: 1.0625rem;
     white-space: pre-wrap;
     word-break: break-word;
     color: var(--text-primary);
@@ -213,7 +213,7 @@ body {
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 0.9375rem;
+    font-size: 1.0625rem;
     resize: none;
     max-height: 200px;
     outline: none;
@@ -251,7 +251,7 @@ body {
 
 .chat-disclaimer {
     text-align: center;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
     color: var(--text-tertiary);
     margin-top: 0.5rem;
 }
@@ -284,6 +284,6 @@ body {
     }
 
     .welcome-title {
-        font-size: 1.5rem;
+        font-size: 1.75rem;
     }
 }

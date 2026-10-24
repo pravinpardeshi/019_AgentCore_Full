@@ -1,4 +1,4 @@
-let latencyChart, tokenSplitChart;
+var latencyChart, tokenSplitChart;
 
 function themeColors() {
     const dark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
@@ -39,9 +39,23 @@ function initMonitoringCharts() {
             labels: ['Input Tokens', 'Output Tokens'],
             datasets: [{ data: [0, 0], backgroundColor: [c.accent, c.purple], borderWidth: 0 }]
         },
+        plugins: [doughnutValueLabels, doughnutCenterTotal],
         options: {
             responsive: true,
-            plugins: { legend: { position: 'bottom', labels: { color: c.text, padding: 12 } } }
+            plugins: {
+                legend: { position: 'bottom', labels: { color: c.text, padding: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            const v = Number(ctx.parsed) || 0;
+                            const data = ctx.dataset.data;
+                            const total = data.reduce((a, b) => a + (Number(b) || 0), 0);
+                            const pct = total ? ((v / total) * 100).toFixed(1) : 0;
+                            return ' ' + ctx.label + ': ' + v.toLocaleString() + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
         }
     });
 }

@@ -1,4 +1,70 @@
-let requestsChart, tokensChart;
+var requestsChart, tokensChart;
+
+if (typeof Chart !== 'undefined') {
+    Chart.defaults.font.family = 'Inter, sans-serif';
+    Chart.defaults.font.size = 13;
+}
+
+function fmtCompact(n) {
+    n = Number(n) || 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+}
+
+const doughnutValueLabels = {
+    id: 'doughnutValueLabels',
+    afterDatasetsDraw(chart) {
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data.length) return;
+        const dataset = chart.data.datasets[0];
+        const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '600 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        meta.data.forEach((arc, i) => {
+            const value = Number(dataset.data[i]) || 0;
+            if (!value) return;
+            const angle = (arc.startAngle + arc.endAngle) / 2;
+            const radius = (arc.innerRadius + arc.outerRadius) / 2;
+            const x = arc.x + Math.cos(angle) * radius;
+            const y = arc.y + Math.sin(angle) * radius;
+            const pct = total ? Math.round((value / total) * 100) : 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(fmtCompact(value), x, y - 7);
+            ctx.font = '500 11.5px Inter, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillText(pct + '%', x, y + 7);
+        });
+        ctx.restore();
+    }
+};
+
+const doughnutCenterTotal = {
+    id: 'doughnutCenterTotal',
+    afterDraw(chart) {
+        if (chart.config.type !== 'doughnut') return;
+        const dataset = chart.data.datasets[0];
+        if (!dataset) return;
+        const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const cx = (chartArea.left + chartArea.right) / 2;
+        const cy = (chartArea.top + chartArea.bottom) / 2;
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = '700 23px Inter, sans-serif';
+        ctx.fillStyle = theme === 'dark' ? '#f1f5f9' : '#0f172a';
+        ctx.fillText(fmtCompact(total), cx, cy - 4);
+        ctx.font = '500 12.5px Inter, sans-serif';
+        ctx.fillStyle = theme === 'dark' ? '#94a3b8' : '#475569';
+        ctx.fillText('total tokens', cx, cy + 15);
+        ctx.restore();
+    }
+};
 
 function initCharts() {
     const requestsCtx = document.getElementById('requestsChart').getContext('2d');
@@ -55,6 +121,7 @@ function initCharts() {
                 borderWidth: 0
             }]
         },
+        plugins: [doughnutValueLabels, doughnutCenterTotal],
         options: {
             responsive: true,
             plugins: {
@@ -63,6 +130,17 @@ function initCharts() {
                     labels: {
                         color: '#94a3b8',
                         padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            const v = Number(ctx.parsed) || 0;
+                            const data = ctx.dataset.data;
+                            const total = data.reduce((a, b) => a + (Number(b) || 0), 0);
+                            const pct = total ? ((v / total) * 100).toFixed(1) : 0;
+                            return ' ' + ctx.label + ': ' + v.toLocaleString() + ' (' + pct + '%)';
+                        }
                     }
                 }
             }
@@ -104,6 +182,11 @@ async function refreshDashboard() {
         const statusIndicator = document.getElementById('agentStatus');
         if (statusIndicator) {
             statusIndicator.className = 'status-indicator' + (m.status === 'healthy' ? '' : ' warning');
+        }
+
+        if (window.tokensChart) {
+            tokensChart.data.datasets[0].data = [m.input_tokens || 0, m.output_tokens || 0];
+            tokensChart.update();
         }
 
         if (invRes.ok) {
