@@ -18,12 +18,11 @@
 </head>
 <body>
     <div class="app-shell">
-        <!-- Side Navigation -->
         <aside class="sidenav" id="sidenav">
             <div class="sidenav-header">
                 <div class="brand">
                     <div class="brand-logo">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
                             <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                             <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
                             <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -32,15 +31,14 @@
                     <span class="brand-text">ServiceNow RAG</span>
                 </div>
                 <button class="sidenav-collapse-btn" onclick="toggleSidenav()" title="Collapse sidebar">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <svg width="23" height="23" viewBox="0 0 18 18" fill="none">
                         <path d="M11.25 5.25L6.75 9L11.25 12.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
             </div>
-
             <nav class="sidenav-nav">
                 <a href="/" class="sidenav-item">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <svg width="23" height="23" viewBox="0 0 18 18" fill="none">
                         <rect x="2.25" y="2.25" width="5.25" height="5.25" rx="1" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="10.5" y="2.25" width="5.25" height="5.25" rx="1" stroke="currentColor" stroke-width="1.5"/>
                         <rect x="2.25" y="10.5" width="5.25" height="5.25" rx="1" stroke="currentColor" stroke-width="1.5"/>
@@ -49,37 +47,35 @@
                     <span class="sidenav-label">Dashboard</span>
                 </a>
                 <a href="/chat" class="sidenav-item">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <svg width="23" height="23" viewBox="0 0 18 18" fill="none">
                         <path d="M15.75 8.25C15.75 12.1455 12.6455 15.25 8.75 15.25C7.89245 15.25 7.07271 15.0984 6.31675 14.8261L3 15.75L3.99857 12.5921C3.44973 11.6973 3.125 10.6344 3.125 9.5C3.125 5.60448 6.22948 2.5 10.125 2.5C14.0205 2.5 15.75 8.25 15.75 8.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="sidenav-label">Chat</span>
                 </a>
                 <a href="/dashboard" class="sidenav-item active">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <svg width="23" height="23" viewBox="0 0 18 18" fill="none">
                         <path d="M2.25 15.75V10.5M6.75 15.75V6.75M11.25 15.75V9M15.75 15.75V4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
                     <span class="sidenav-label">Monitoring</span>
                 </a>
             </nav>
-
             <div class="sidenav-footer">
                 <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme">
-                    <svg class="theme-icon sun" width="17" height="17" viewBox="0 0 18 18" fill="none">
+                    <svg class="theme-icon sun" width="20" height="20" viewBox="0 0 18 18" fill="none">
                         <circle cx="9" cy="9" r="3.75" stroke="currentColor" stroke-width="1.5"/>
                         <path d="M9 1.5V3M9 15V16.5M16.5 9H15M3 9H1.5M14.303 3.697L13.243 4.757M4.757 13.243L3.697 14.303M14.303 14.303L13.243 13.243M4.757 4.757L3.697 3.697" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
-                    <svg class="theme-icon moon" width="17" height="17" viewBox="0 0 18 18" fill="none">
+                    <svg class="theme-icon moon" width="20" height="20" viewBox="0 0 18 18" fill="none">
                         <path d="M15.75 9.75C15.75 13.4779 12.7279 16.5 9 16.5C5.27208 16.5 2.25 13.4779 2.25 9.75C2.25 6.02208 5.27208 3 9 3C9.53043 3 10.0391 3.0703 10.5234 3.19815C9.71324 4.08573 9.25 5.25873 9.25 6.54165C9.25 9.26557 11.476 11.4915 14.1999 11.4915C14.9742 11.4915 15.7015 11.326 16.3382 11.0321C16.0983 10.4859 15.75 10.0822 15.75 9.75Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="sidenav-label">Toggle Theme</span>
                 </button>
             </div>
         </aside>
-
         <div class="main-shell">
             <header class="topbar">
                 <button class="sidenav-expand-btn" onclick="toggleSidenav()" title="Expand sidebar">
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                    <svg width="23" height="23" viewBox="0 0 18 18" fill="none">
                         <path d="M6.75 5.25L11.25 9L6.75 12.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
@@ -97,47 +93,32 @@
                     <span class="last-update">Updated: <span id="lastUpdate">--</span></span>
                 </div>
             </header>
-
             <main class="monitor-body">
-                <!-- Service Health -->
                 <section class="monitor-section">
                     <div class="section-heading">
                         <h2>Service Health</h2>
                         <span class="section-sub">Live checks against runtime endpoints</span>
                     </div>
                     <div class="health-grid">
-                        <div class="health-card" id="healthCard">
-                            <div class="health-top">
-                                <span class="health-name">/health</span>
-                                <span class="health-dot" id="healthDot"></span>
-                            </div>
+                        <div class="health-card">
+                            <div class="health-top"><span class="health-name">/health</span><span class="health-dot" id="healthDot"></span></div>
                             <div class="health-value" id="healthValue">checking…</div>
                             <div class="health-latency" id="healthLatency">—</div>
                         </div>
-                        <div class="health-card" id="pingCard">
-                            <div class="health-top">
-                                <span class="health-name">/ping <span class="badge">AgentCore</span></span>
-                                <span class="health-dot" id="pingDot"></span>
-                            </div>
+                        <div class="health-card">
+                            <div class="health-top"><span class="health-name">/ping <span class="badge">AgentCore</span></span><span class="health-dot" id="pingDot"></span></div>
                             <div class="health-value" id="pingValue">checking…</div>
                             <div class="health-latency" id="pingLatency">—</div>
                         </div>
                         <div class="health-card">
-                            <div class="health-top">
-                                <span class="health-name">DB / Agent</span>
-                                <span class="health-dot" id="agentDot"></span>
-                            </div>
+                            <div class="health-top"><span class="health-name">DB / Agent</span><span class="health-dot" id="agentDot"></span></div>
                             <div class="health-value" id="agentValue">checking…</div>
                             <div class="health-latency">via /api/monitor/metrics</div>
                         </div>
                     </div>
                 </section>
-
-                <!-- Key indicators -->
                 <section class="monitor-section">
-                    <div class="section-heading">
-                        <h2>Key Indicators</h2>
-                    </div>
+                    <div class="section-heading"><h2>Key Indicators</h2></div>
                     <div class="kpis-row">
                         <div class="kpi"><span class="kpi-label">Requests</span><span class="kpi-value" id="kpiRequests">–</span></div>
                         <div class="kpi"><span class="kpi-label">Tokens</span><span class="kpi-value" id="kpiTokens">–</span></div>
@@ -147,12 +128,8 @@
                         <div class="kpi"><span class="kpi-label">Uptime</span><span class="kpi-value" id="kpiUptime">–</span></div>
                     </div>
                 </section>
-
-                <!-- Charts -->
                 <section class="monitor-section">
-                    <div class="section-heading">
-                        <h2>Latency &amp; Token Usage</h2>
-                    </div>
+                    <div class="section-heading"><h2>Latency &amp; Token Usage</h2></div>
                     <div class="charts-row">
                         <div class="chart-card">
                             <h3>Recent Invocation Latency (s)</h3>
@@ -168,8 +145,6 @@
                         <canvas id="cumulativeTokensChart"></canvas>
                     </div>
                 </section>
-
-                <!-- Full invocation log -->
                 <section class="monitor-section">
                     <div class="section-heading">
                         <h2>Invocation Log</h2>
@@ -179,13 +154,7 @@
                         <div class="table-container">
                             <table class="data-table">
                                 <thead>
-                                    <tr>
-                                        <th>Timestamp</th>
-                                        <th>Status</th>
-                                        <th>Query</th>
-                                        <th>Tokens</th>
-                                        <th>Latency</th>
-                                    </tr>
+                                    <tr><th>Timestamp</th><th>Status</th><th>Query</th><th>Tokens</th><th>Latency</th></tr>
                                 </thead>
                                 <tbody id="logTable"></tbody>
                             </table>
@@ -195,7 +164,7 @@
             </main>
         </div>
     </div>
-
+    <script>window.API_BASE = "{{ api_base if api_base else '' }}".replace(/\/+$/, "");</script>
     <script src="/static/sidenav.js"></script>
     <script src="/static/monitoring.js"></script>
 </body>

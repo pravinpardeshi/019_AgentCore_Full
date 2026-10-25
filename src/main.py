@@ -47,13 +47,27 @@ async def read_root(request: Request):
 
 
 @app.get("/dashboard")
-async def dashboard():
-    return RedirectResponse(url="/", status_code=302)
+async def dashboard(request: Request):
+    from config.config import settings
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "active_page": "monitoring",
+        "agentcore_endpoint": settings.agentcore_runtime_arn or "",
+        "use_agentcore": "true" if settings.agentcore_runtime_arn else "false",
+        "api_base": settings.ui_api_base or "",
+    })
 
 
 @app.get("/chat")
-async def chat_page():
-    return RedirectResponse(url="/", status_code=302)
+async def chat_page(request: Request):
+    from config.config import settings
+    return templates.TemplateResponse("chat.html", {
+        "request": request,
+        "active_page": "chat",
+        "agentcore_endpoint": settings.agentcore_runtime_arn or "",
+        "use_agentcore": "true" if settings.agentcore_runtime_arn else "false",
+        "api_base": settings.ui_api_base or "",
+    })
 
 
 @app.get("/health")

@@ -125,7 +125,7 @@ async function refreshDashboard() {
         const m = await metricsRes.json();
 
         setMetric('totalRequests', Number(m.total_requests).toLocaleString());
-        setMetric('totalTokens', formatNum(m.total_tokens));
+        setMetric('totalTokens', fmtCompact(m.total_tokens));
         setMetric('avgLatency', m.avg_latency_ms + 'ms');
         setMetric('errorRate', m.error_rate + '%');
         setMetric('activeSessions', m.active_sessions);
@@ -137,8 +137,8 @@ async function refreshDashboard() {
         }
 
         if (window.tokensChart) {
-            tokensChart.data.datasets[0].data = [m.input_tokens || 0, m.output_tokens || 0];
-            tokensChart.update();
+            window.tokensChart.data.datasets[0].data = [m.input_tokens || 0, m.output_tokens || 0];
+            window.tokensChart.update();
         }
 
         if (invRes.ok) {
