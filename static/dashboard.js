@@ -1,8 +1,30 @@
 var requestsChart, tokensChart;
 
+if (typeof colors === 'undefined') {
+    var colors = {
+        bg: '#0f172a',
+        text: '#f1f5f9',
+        secondary: '#94a3b8',
+        accent: '#60a5fa',
+        purple: '#a78bfa',
+        emerald: '#10b981',
+        amber: '#fbbf24',
+        red: '#f87171'
+    };
+}
+
 if (typeof Chart !== 'undefined') {
     Chart.defaults.font.family = 'Inter, sans-serif';
-    Chart.defaults.font.size = 13;
+    Chart.defaults.font.size = 14;
+    Chart.defaults.color = colors.text;
+    
+    // Safe navigation for plugin defaults
+    if (Chart.defaults.plugins && Chart.defaults.plugins.title) {
+        Chart.defaults.plugins.title.font = { size: 18, weight: 'bold' };
+    }
+    if (Chart.defaults.plugins && Chart.defaults.plugins.legend && Chart.defaults.plugins.legend.labels) {
+        Chart.defaults.plugins.legend.labels.font = { size: 14 };
+    }
 }
 
 function fmtCompact(n) {
@@ -11,60 +33,6 @@ function fmtCompact(n) {
     if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
     return String(n);
 }
-
-const doughnutValueLabels = {
-    id: 'doughnutValueLabels',
-    afterDatasetsDraw(chart) {
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data.length) return;
-        const dataset = chart.data.datasets[0];
-        const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = '600 14px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        meta.data.forEach((arc, i) => {
-            const value = Number(dataset.data[i]) || 0;
-            if (!value) return;
-            const angle = (arc.startAngle + arc.endAngle) / 2;
-            const radius = (arc.innerRadius + arc.outerRadius) / 2;
-            const x = arc.x + Math.cos(angle) * radius;
-            const y = arc.y + Math.sin(angle) * radius;
-            const pct = total ? Math.round((value / total) * 100) : 0;
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(fmtCompact(value), x, y - 7);
-            ctx.font = '500 11.5px Inter, sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            ctx.fillText(pct + '%', x, y + 7);
-        });
-        ctx.restore();
-    }
-};
-
-const doughnutCenterTotal = {
-    id: 'doughnutCenterTotal',
-    afterDraw(chart) {
-        if (chart.config.type !== 'doughnut') return;
-        const dataset = chart.data.datasets[0];
-        if (!dataset) return;
-        const total = dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
-        const { ctx, chartArea } = chart;
-        if (!chartArea) return;
-        const cx = (chartArea.left + chartArea.right) / 2;
-        const cy = (chartArea.top + chartArea.bottom) / 2;
-        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.font = '700 23px Inter, sans-serif';
-        ctx.fillStyle = theme === 'dark' ? '#f1f5f9' : '#0f172a';
-        ctx.fillText(fmtCompact(total), cx, cy - 4);
-        ctx.font = '500 12.5px Inter, sans-serif';
-        ctx.fillStyle = theme === 'dark' ? '#94a3b8' : '#475569';
-        ctx.fillText('total tokens', cx, cy + 15);
-        ctx.restore();
-    }
-};
 
 function initCharts() {
     const requestsCtx = document.getElementById('requestsChart').getContext('2d');
@@ -83,28 +51,16 @@ function initCharts() {
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
                 y: {
                     beginAtZero: true,
-                    grid: {
-                        color: '#1e293b'
-                    },
-                    ticks: {
-                        color: '#94a3b8'
-                    }
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: colors.text, font: { size: 14 } }
                 },
                 x: {
-                    grid: {
-                        color: '#1e293b'
-                    },
-                    ticks: {
-                        color: '#94a3b8'
-                    }
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: colors.text, font: { size: 14 } }
                 }
             }
         }
@@ -112,36 +68,38 @@ function initCharts() {
 
     const tokensCtx = document.getElementById('tokensChart').getContext('2d');
     tokensChart = new Chart(tokensCtx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: ['Input Tokens', 'Output Tokens'],
             datasets: [{
-                data: [65000, 45000],
+                label: 'Tokens',
+                data: [0, 0],
                 backgroundColor: ['#60a5fa', '#a78bfa'],
-                borderWidth: 0
+                borderColor: colors.bg,
+                borderWidth: 1
             }]
         },
-        plugins: [doughnutValueLabels, doughnutCenterTotal],
         options: {
+            indexAxis: 'y',
             responsive: true,
+            maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#94a3b8',
-                        padding: 15
-                    }
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Token Usage Distribution',
+                    font: { size: 18, weight: 'bold' }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: colors.text, font: { size: 14 } }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function (ctx) {
-                            const v = Number(ctx.parsed) || 0;
-                            const data = ctx.dataset.data;
-                            const total = data.reduce((a, b) => a + (Number(b) || 0), 0);
-                            const pct = total ? ((v / total) * 100).toFixed(1) : 0;
-                            return ' ' + ctx.label + ': ' + v.toLocaleString() + ' (' + pct + '%)';
-                        }
-                    }
+                y: {
+                    grid: { display: false },
+                    ticks: { color: colors.text, font: { size: 14 } }
                 }
             }
         }
@@ -151,12 +109,6 @@ function initCharts() {
 function setMetric(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value;
-}
-
-function formatNum(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return String(n);
 }
 
 async function refreshDashboard() {
@@ -267,12 +219,10 @@ function updateInvocationsTable() {
 
 function updateTimeRange(range) {
     console.log('Time range changed to:', range);
-    // Would fetch data for different time ranges
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     refreshDashboard();
-    // Auto refresh every 30 seconds
     setInterval(refreshDashboard, 30000);
 });

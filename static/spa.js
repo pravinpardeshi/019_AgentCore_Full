@@ -35,8 +35,12 @@ function switchView(name) {
         if (window.tokensChart) tokensChart.resize();
         if (typeof refreshDashboard === 'function') refreshDashboard();
     } else if (name === 'monitoring') {
-        if (window.latencyChart) latencyChart.resize();
-        if (window.tokenSplitChart) tokenSplitChart.resize();
+        if (typeof initMonitoringCharts === 'function') {
+            initMonitoringCharts();
+        }
+        if (window.reqChart) window.reqChart.resize();
+        if (window.tokensChart) window.tokensChart.resize();
+        if (window.cumChart) window.cumChart.resize();
         if (typeof refreshMonitoring === 'function') refreshMonitoring();
     }
 }

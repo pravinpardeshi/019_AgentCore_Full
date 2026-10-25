@@ -150,6 +150,8 @@ body {
     border-radius: 0.75rem;
     padding: 1.125rem;
     box-shadow: var(--shadow);
+    height: 300px;
+    position: relative;
 }
 
 .chart-card h3 {

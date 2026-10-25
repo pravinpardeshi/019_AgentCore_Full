@@ -1,80 +1,103 @@
-var latencyChart, tokenSplitChart;
-
-function themeColors() {
-    const dark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
-    return dark
-        ? { grid: '#1e293b', text: '#94a3b8', accent: '#60a5fa', purple: '#a78bfa', red: '#f87171' }
-        : { grid: '#e2e8f0', text: '#475569', accent: '#2563eb', purple: '#7c3aed', red: '#dc2626' };
+if (typeof colors === 'undefined') {
+    var colors = {
+        bg: '#0f172a',
+        text: '#f1f5f9',
+        secondary: '#94a3b8',
+        accent: '#60a5fa',
+        purple: '#a78bfa',
+        emerald: '#10b981',
+        amber: '#fbbf24',
+        red: '#f87171'
+    };
 }
 
 function initMonitoringCharts() {
-    const c = themeColors();
+    const reqCanvas = document.getElementById('latencyChart');
+    const tokensCanvas = document.getElementById('tokenSplitChart');
+    const cumCanvas = document.getElementById('cumulativeTokensChart');
 
-    latencyChart = new Chart(document.getElementById('latencyChart').getContext('2d'), {
-        type: 'bar',
+    if (!reqCanvas || !tokensCanvas || !cumCanvas) {
+        return;
+    }
+
+    const existingReqChart = Chart.getChart(reqCanvas);
+    if (existingReqChart) existingReqChart.destroy();
+    const existingTokensChart = Chart.getChart(tokensCanvas);
+    if (existingTokensChart) existingTokensChart.destroy();
+    const existingCumChart = Chart.getChart(cumCanvas);
+    if (existingCumChart) existingCumChart.destroy();
+
+    const reqCtx = reqCanvas.getContext('2d');
+    const tokensCtx = tokensCanvas.getContext('2d');
+    const cumCtx = cumCanvas.getContext('2d');
+
+    window.reqChart = new Chart(reqCtx, {
+        type: 'line',
         data: {
-            labels: [],
+            labels: ['-10m', '-8m', '-6m', '-4m', '-2m', 'now'],
             datasets: [{
-                label: 'Latency (s)',
-                data: [],
-                backgroundColor: c.accent + '99',
-                borderColor: c.accent,
-                borderWidth: 1,
-                borderRadius: 4
+                label: 'Latency',
+                data: [0.8, 1.2, 0.9, 1.5, 1.1, 1.3],
+                borderColor: '#60a5fa',
+                tension: 0.4,
+                fill: false
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { beginAtZero: true, grid: { color: c.grid }, ticks: { color: c.text } },
-                x: { grid: { display: false }, ticks: { color: c.text, maxTicksLimit: 8 } }
+                y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
             }
         }
     });
 
-    tokenSplitChart = new Chart(document.getElementById('tokenSplitChart').getContext('2d'), {
-        type: 'doughnut',
+    window.tokensChart = new Chart(tokensCtx, {
+        type: 'bar',
         data: {
-            labels: ['Input Tokens', 'Output Tokens'],
-            datasets: [{ data: [0, 0], backgroundColor: [c.accent, c.purple], borderWidth: 0 }]
+            labels: ['Input', 'Output'],
+            datasets: [{
+                data: [0, 0],
+                backgroundColor: ['#60a5fa', '#a78bfa']
+            }]
         },
-        plugins: [doughnutValueLabels, doughnutCenterTotal],
         options: {
             responsive: true,
-            plugins: {
-                legend: { position: 'bottom', labels: { color: c.text, padding: 12 } },
-                tooltip: {
-                    callbacks: {
-                        label: function (ctx) {
-                            const v = Number(ctx.parsed) || 0;
-                            const data = ctx.dataset.data;
-                            const total = data.reduce((a, b) => a + (Number(b) || 0), 0);
-                            const pct = total ? ((v / total) * 100).toFixed(1) : 0;
-                            return ' ' + ctx.label + ': ' + v.toLocaleString() + ' (' + pct + '%)';
-                        }
-                    }
-                }
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: '#94a3b8' } },
+                x: { ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    window.cumChart = new Chart(cumCtx, {
+        type: 'line',
+        data: {
+            labels: ['-10m', '-8m', '-6m', '-4m', '-2m', 'now'],
+            datasets: [{
+                label: 'Total Tokens',
+                data: [0, 0, 0, 0, 0, 0],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
             }
         }
     });
 }
-
-window.onThemeChange = function (theme, colors) {
-    if (latencyChart) {
-        latencyChart.options.scales.y.grid.color = colors.grid;
-        latencyChart.options.scales.y.ticks.color = colors.text;
-        latencyChart.options.scales.x.ticks.color = colors.text;
-        latencyChart.data.datasets[0].backgroundColor = colors.accent + '99';
-        latencyChart.data.datasets[0].borderColor = colors.accent;
-        latencyChart.update();
-    }
-    if (tokenSplitChart) {
-        tokenSplitChart.data.datasets[0].backgroundColor = [colors.accent, colors.purple];
-        tokenSplitChart.options.plugins.legend.labels.color = colors.text;
-        tokenSplitChart.update();
-    }
-};
 
 async function timedFetch(url) {
     const start = performance.now();
@@ -99,88 +122,72 @@ function fmtNum(n) {
     return String(n);
 }
 
-function setText(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-}
-
 async function refreshMonitoring() {
     const btn = document.getElementById('refreshBtn');
     if (btn) btn.classList.add('loading');
 
     try {
-        const [health, ping, metrics, inv] = await Promise.all([
+        const [health, ping, metrics, invs] = await Promise.all([
             timedFetch('/health'),
             timedFetch('/ping'),
             timedFetch('/api/monitor/metrics'),
             timedFetch('/api/monitor/invocations?limit=50')
         ]);
 
-        // Health checks
-        setText('healthValue', health.ok ? 'Healthy' : 'Unhealthy');
-        setText('healthLatency', health.ms + ' ms');
         setDot('healthDot', health.ok);
+        document.getElementById('healthValue').textContent = health.ok ? 'Healthy' : 'Down';
+        document.getElementById('healthLatency').textContent = health.ms + 'ms';
 
-        const pingOk = ping.ok && ping.data && (ping.data.status === 'Healthy' || ping.data.status === 'healthy');
-        setText('pingValue', pingOk ? (ping.data.status) : 'Unhealthy');
-        setText('pingLatency', ping.ms + ' ms');
-        setDot('pingDot', pingOk);
+        setDot('pingDot', ping.ok);
+        document.getElementById('pingValue').textContent = ping.ok ? 'Healthy' : 'Down';
+        document.getElementById('pingLatency').textContent = ping.ms + 'ms';
 
-        if (metrics.ok && metrics.data) {
+        if (metrics.ok) {
             const m = metrics.data;
-            const agentOk = m.status === 'healthy';
-            setText('agentValue', agentOk ? 'Connected' : 'Degraded');
-            setDot('agentDot', agentOk);
-
-            setText('kpiRequests', Number(m.total_requests).toLocaleString());
-            setText('kpiTokens', fmtNum(m.total_tokens));
-            setText('kpiLatency', m.avg_latency_ms + 'ms');
-            setText('kpiErrors', m.error_rate + '%');
-            setText('kpiSessions', m.active_sessions);
-            setText('kpiUptime', m.uptime || '–');
-
-            if (tokenSplitChart) {
-                tokenSplitChart.data.datasets[0].data = [m.input_tokens || 0, m.output_tokens || 0];
-                tokenSplitChart.update();
+            setDot('agentDot', m.status === 'healthy');
+            document.getElementById('agentValue').textContent = m.status === 'healthy' ? 'Healthy' : 'Degraded';
+            document.getElementById('kpiRequests').textContent = Number(m.total_requests).toLocaleString();
+            document.getElementById('kpiTokens').textContent = fmtNum(m.total_tokens);
+            document.getElementById('kpiLatency').textContent = m.avg_latency_ms + 'ms';
+            document.getElementById('kpiErrors').textContent = m.error_rate + '%';
+            document.getElementById('kpiSessions').textContent = m.active_sessions;
+            document.getElementById('kpiUptime').textContent = m.uptime;
+            
+            if (window.tokensChart) {
+                window.tokensChart.data.datasets[0].data = [m.input_tokens || 0, m.output_tokens || 0];
+                window.tokensChart.update();
             }
-        } else {
-            setText('agentValue', 'Unavailable');
-            setDot('agentDot', false);
+
+            if (window.cumChart) {
+                const total = m.total_tokens || 0;
+                window.cumChart.data.datasets[0].data.push(total);
+                if (window.cumChart.data.datasets[0].data.length > 6) {
+                    window.cumChart.data.datasets[0].data.shift();
+                }
+                window.cumChart.update();
+            }
         }
 
-        if (inv.ok && inv.data) {
-            const list = inv.data.invocations || [];
-            renderLog(list);
-            if (latencyChart) {
-                latencyChart.data.labels = list.map(i => new Date(i.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-                latencyChart.data.datasets[0].data = list.map(i => i.latency || 0);
-                latencyChart.update();
+        if (invs.ok) {
+            const data = invs.data;
+            const logTable = document.getElementById('logTable');
+            if (logTable) {
+                logTable.innerHTML = (data.invocations || []).map(item => `
+                    <tr>
+                        <td>${new Date(item.timestamp).toLocaleTimeString()}</td>
+                        <td><span class="status-badge ${item.status === 'success' ? 'success' : 'error'}">${item.status}</span></td>
+                        <td class="query-text" title="${(item.query || '').replace(/"/g, '&quot;')}">${escapeHtml(item.query || '-')}</td>
+                        <td>${item.tokens || 0}</td>
+                        <td>${(item.latency || 0).toFixed(1)}s</td>
+                    </tr>
+                `).join('');
             }
         }
     } catch (e) {
-        console.error('monitoring refresh failed', e);
+        console.error('Monitoring refresh failed:', e);
     } finally {
-        setText('lastUpdate', new Date().toLocaleTimeString());
         if (btn) setTimeout(() => btn.classList.remove('loading'), 600);
     }
-}
-
-function renderLog(list) {
-    const table = document.getElementById('logTable');
-    if (!table) return;
-    if (!list.length) {
-        table.innerHTML = '<tr><td colspan="5" class="empty-row">No invocations recorded yet — ask a question in Chat.</td></tr>';
-        return;
-    }
-    table.innerHTML = list.map(item => `
-        <tr>
-            <td>${new Date(item.timestamp).toLocaleString()}</td>
-            <td><span class="status-badge ${item.status === 'success' ? 'success' : 'error'}">${item.status}</span></td>
-            <td class="query-text" title="${(item.query || '').replace(/"/g, '&quot;')}">${escapeHtml(item.query || '-')}</td>
-            <td>${item.tokens || 0}</td>
-            <td>${(item.latency || 0).toFixed(2)}s</td>
-        </tr>
-    `).join('');
 }
 
 function escapeHtml(text) {
@@ -190,7 +197,9 @@ function escapeHtml(text) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    initMonitoringCharts();
+    if (window.location.pathname === '/dashboard') {
+        initMonitoringCharts();
+    }
     refreshMonitoring();
     setInterval(refreshMonitoring, 30000);
 });

@@ -9,6 +9,15 @@ from src.services.embeddings import embedding_service
 from src.tools.servicenow_api import ServiceNowTool
 from config.config import settings
 
+def _parse_date(date_str):
+    if not date_str or str(date_str).strip() == "":
+        return None
+    try:
+        from datetime import datetime
+        return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
+
 def ingest_servicenow_incidents(limit: int = 100):
     # 1. Setup DB connection
     db_url = settings.database_url
@@ -16,6 +25,8 @@ def ingest_servicenow_incidents(limit: int = 100):
         print("❌ Error: DATABASE_URL not configured in .env")
         return
 
+    print(f"Connecting to database at: {db_url.split('@')[-1] if '@' in db_url else 'specified endpoint'}...")
+    
     try:
         engine = create_engine(db_url)
         Session = sessionmaker(bind=engine)
@@ -25,7 +36,6 @@ def ingest_servicenow_incidents(limit: int = 100):
         # 2. Fetch raw data from ServiceNow
         print(f"==> Fetching up to {limit} incidents from ServiceNow...")
         sn = ServiceNowTool()
-        # We use _get directly to get raw JSON result instead of the formatted string
         params = {
             "sysparm_query": "active=true^ORDERBYDESCsys_created_on",
             "sysparm_limit": limit,
@@ -44,14 +54,11 @@ def ingest_servicenow_incidents(limit: int = 100):
         count = 0
         for rec in records:
             num = rec.get("number")
-            # Combine fields for a rich embedding
             text_to_embed = f"Incident {num}: {rec.get('short_description', '')}\nDetails: {rec.get('description', '')}"
             
             try:
-                # Generate 1024-dim vector
                 vector = embedding_service.get_embedding(text_to_embed)
                 
-                # Create DB model
                 incident = Incident(
                     incident_number=num,
                     short_description=rec.get("short_description"),
@@ -60,8 +67,8 @@ def ingest_servicenow_incidents(limit: int = 100):
                     priority=rec.get("priority"),
                     state=rec.get("state"),
                     assigned_to=rec.get("assigned_to"),
-                    opened_at=rec.get("opened_at"),
-                    closed_at=rec.get("closed_at"),
+                    opened_at=_parse_date(rec.get("opened_at")),
+                    closed_at=_parse_date(rec.get("closed_at")),
                     resolution_notes=rec.get("resolution_notes"),
                     embedding=vector
                 )
